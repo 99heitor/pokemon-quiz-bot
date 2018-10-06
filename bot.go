@@ -2,58 +2,52 @@ package main
 
 import (
 	"encoding/csv"
-	"fmt"
 	"log"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
-	tb "gopkg.in/tucnak/telebot.v2"
+	pk "github.com/99heitor/pokemon-quiz-bot/pkmnquizbot"
+	"gopkg.in/telegram-bot-api.v4"
 )
 
-type pokemon struct {
-	id   int
-	name string
-}
-
-var p [][]string
-
-func getPokemon(id int) pokemon {
-	return pokemon{id, p[id][30]}
-}
-
 func main() {
+	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_TOKEN"))
+	if err != nil {
+		log.Panic(err)
+	}
+	log.Printf("Authorized on account %s", bot.Self.UserName)
 	rand.Seed(time.Now().UnixNano())
-	b, err := tb.NewBot(tb.Settings{
-		Token:  "655858914:AAGyujNYdGtbfmQUwcCq6FI7H_lXmgfsNaE",
-		Poller: &tb.LongPoller{Timeout: 10 * time.Second},
-	})
 
 	file, _ := os.Open("pokemon.csv")
-	p, _ = csv.NewReader(file).ReadAll()
-	storedAnswers := make(map[int64]pokemon)
+	pk.AllPokemon, _ = csv.NewReader(file).ReadAll()
+	pk.StoredAnswers = make(map[int64]pk.Pokemon)
 
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
+	bot.Debug = false
 
-	b.Handle("/who", func(m *tb.Message) {
-		r := rand.Intn(801)
-		pic := &tb.Photo{
-			File:    tb.FromURL(fmt.Sprintf("https://assets.pokemon.com/assets/cms2/img/pokedex/full/%03d.png", r+1)),
-			Caption: "Who's that Pokémon?"}
-		storedAnswers[m.Chat.ID] = getPokemon(r + 1)
-		b.Send(m.Sender, pic)
-	})
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
 
-	b.Handle(tb.OnText, func(m *tb.Message) {
-		if answer, ok := storedAnswers[m.Chat.ID]; ok {
-			if m.Text == answer.name {
-				b.Reply(m, "It's "+answer.name+"!")
-			}
+	updates, err := bot.GetUpdatesChan(u)
+
+	for update := range updates {
+		command := update.Message.Command()
+		switch {
+
+		case update.Message == nil:
+			continue
+
+		case strings.EqualFold(command, "who"):
+			pk.WhosThatPokemon(bot, update)
+
+		case strings.EqualFold(command, "its"):
+			pk.Its(bot, update)
+
+		case strings.EqualFold(command, "debug") && update.Message.Chat.ID == 36992723:
+			log.Printf("Switching debug mode to %t", !bot.Debug)
+			bot.Debug = !bot.Debug
+
 		}
-	})
-
-	b.Start()
+	}
 }
