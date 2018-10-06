@@ -8,12 +8,14 @@ import (
 	"net/http"
 )
 
+//Pokemon holds only the necessary info for the game to work
 type Pokemon struct {
 	id   int
 	name string
 	img  io.Reader
 }
 
+//PokemonList is just the pokemon CSV
 type PokemonList [][]string
 
 const pokemonAssets = "https://assets.pokemon.com/assets/cms2/img/pokedex/full/%03d.png"
@@ -23,6 +25,7 @@ func (p PokemonList) getPokemon(id int) Pokemon {
 	return Pokemon{id, p[id][30], resp.Body}
 }
 
+//shadowImage is the "shadow" version of an image: all non-alpha pixels are changed to black.
 type shadowImage struct {
 	originalImage image.Image
 }
