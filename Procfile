@@ -1,0 +1,1 @@
+worker: pokemon-quiz-bot
