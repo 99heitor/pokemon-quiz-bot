@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	pk "github.com/99heitor/pokemon-quiz-bot/pkmnquizbot"
+	pk "github.com/99heitor/pokemon-quiz-bot/internal/app/pkmnquizbot"
 	"gopkg.in/telegram-bot-api.v4"
 )
 
@@ -32,11 +32,13 @@ func main() {
 	updates, err := bot.GetUpdatesChan(u)
 
 	for update := range updates {
+
+		if update.Message == nil {
+			continue
+		}
+
 		command := update.Message.Command()
 		switch {
-
-		case update.Message == nil:
-			continue
 
 		case strings.EqualFold(command, "who"):
 			pk.WhosThatPokemon(bot, update)
