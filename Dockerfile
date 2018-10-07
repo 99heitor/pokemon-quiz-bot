@@ -9,6 +9,6 @@ FROM scratch
 WORKDIR /root/
 COPY --from=0 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=0 /go/src/github.com/99heitor/pokemon-quiz-bot/app .
-COPY --from=0 /go/src/github.com/99heitor/pokemon-quiz-bot/cmd/pokemon.csv .
+COPY --from=0 /go/src/github.com/99heitor/pokemon-quiz-bot/pokemon.csv .
 
 CMD ["./app"]  
