@@ -3,7 +3,7 @@ WORKDIR /go/src/github.com/99heitor/pokemon-quiz-bot/
 RUN go get -d -v golang.org/x/net/html  
 RUN go get -d -v gopkg.in/telegram-bot-api.v4
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app ./cmd
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
 
 FROM scratch
 WORKDIR /root/
