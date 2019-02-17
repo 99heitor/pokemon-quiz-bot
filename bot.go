@@ -9,7 +9,7 @@ import (
 	"time"
 
 	pk "github.com/99heitor/pokemon-quiz-bot/pkmnquizbot"
-	"gopkg.in/telegram-bot-api.v4"
+	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
 func main() {
@@ -17,7 +17,6 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	log.Printf("Authorized on account %s", bot.Self.UserName)
 	rand.Seed(time.Now().UnixNano())
 
 	file, _ := os.Open("pokemon.csv")

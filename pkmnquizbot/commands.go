@@ -2,12 +2,11 @@ package pkmnquizbot
 
 import (
 	"bytes"
-	"image"
 	png "image/png"
 	"math/rand"
 	"strings"
 
-	"gopkg.in/telegram-bot-api.v4"
+	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
 //AllPokemon will be initialized by the main function from the csv file
@@ -21,9 +20,8 @@ func WhosThatPokemon(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	r := rand.Intn(801)
 	randomPokemon := AllPokemon.getPokemon(r + 1)
 
-	StoredAnswers[update.Message.Chat.ID] = AllPokemon.getPokemon(r + 1)
-	decodedImage, _, _ := image.Decode(randomPokemon.img)
-	shadow := shadowImage{decodedImage}
+	StoredAnswers[update.Message.Chat.ID] = randomPokemon
+	shadow := shadowImage{randomPokemon.img}
 	shadowPNG := new(bytes.Buffer)
 	png.Encode(shadowPNG, shadow)
 	fileReader := tgbotapi.FileReader{Name: "Name", Reader: shadowPNG, Size: -1}
@@ -37,7 +35,9 @@ func WhosThatPokemon(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 func Its(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	if answer, ok := StoredAnswers[update.Message.Chat.ID]; ok {
 		if strings.EqualFold(update.Message.CommandArguments(), answer.name) || update.Message.CommandArguments() == "..." {
-			fileReader := tgbotapi.FileReader{Name: "Name", Reader: answer.img, Size: -1}
+			originalPNG := new(bytes.Buffer)
+			png.Encode(originalPNG, answer.img)
+			fileReader := tgbotapi.FileReader{Name: "Name", Reader: originalPNG, Size: -1}
 			msg := tgbotapi.NewPhotoUpload(update.Message.Chat.ID, fileReader)
 			msg.Caption = "It's " + answer.name + "!"
 			msg.ReplyToMessageID = update.Message.MessageID

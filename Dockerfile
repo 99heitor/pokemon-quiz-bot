@@ -1,14 +1,18 @@
-FROM golang:1.11.1
+FROM golang:1.11.1 as builder
 WORKDIR /go/src/github.com/99heitor/pokemon-quiz-bot/
-RUN go get -d -v golang.org/x/net/html  
-RUN go get -d -v gopkg.in/telegram-bot-api.v4
+ENV GO111MODULE=on
+
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o app .
+RUN make static-build
 
 FROM scratch
 WORKDIR /root/
-COPY --from=0 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=0 /go/src/github.com/99heitor/pokemon-quiz-bot/app .
-COPY --from=0 /go/src/github.com/99heitor/pokemon-quiz-bot/pokemon.csv .
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+COPY --from=builder /go/src/github.com/99heitor/pokemon-quiz-bot/bot .
+COPY --from=builder /go/src/github.com/99heitor/pokemon-quiz-bot/pokemon.csv .
 
-CMD ["./app"]  
+CMD ["./bot"]  
