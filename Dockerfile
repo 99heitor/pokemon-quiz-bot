@@ -1,5 +1,5 @@
 FROM golang:1.11.1 as builder
-WORKDIR /go/src/github.com/99heitor/pokemon-quiz-bot/
+WORKDIR /build
 ENV GO111MODULE=on
 
 COPY go.mod .
@@ -12,7 +12,7 @@ RUN make static-build
 FROM scratch
 WORKDIR /root/
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=builder /go/src/github.com/99heitor/pokemon-quiz-bot/bot .
-COPY --from=builder /go/src/github.com/99heitor/pokemon-quiz-bot/pokemon.csv .
+COPY --from=builder /build/bot .
+COPY --from=builder /build/pokemon.csv .
 
 CMD ["./bot"]  
