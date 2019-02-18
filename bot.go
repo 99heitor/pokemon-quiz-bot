@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
@@ -46,9 +47,13 @@ func main() {
 			pk.Its(bot, update)
 
 		case strings.EqualFold(command, "debug") && update.Message.Chat.ID == 36992723:
-			log.Printf("Switching debug mode to %t", !bot.Debug)
+			rsp := fmt.Sprintf("Switching debug mode to %t", !bot.Debug)
+			log.Printf(rsp)
 			bot.Debug = !bot.Debug
 
+			msg := tgbotapi.NewMessage(update.Message.Chat.ID, rsp)
+			msg.ReplyToMessageID = update.Message.MessageID
+			bot.Send(msg)
 		}
 	}
 }
