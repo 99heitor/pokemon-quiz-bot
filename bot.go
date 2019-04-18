@@ -8,33 +8,43 @@ import (
 	"os"
 	"strings"
 	"time"
+	"net/http"
 
 	pk "github.com/99heitor/pokemon-quiz-bot/pkmnquizbot"
 	tgbotapi "gopkg.in/telegram-bot-api.v4"
 )
 
 func main() {
-	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_TOKEN"))
-	if err != nil {
-		log.Panic(err)
-	}
 	rand.Seed(time.Now().UnixNano())
-
 	file, _ := os.Open("pokemon.csv")
 	pk.AllPokemon, _ = csv.NewReader(file).ReadAll()
 	pk.StoredAnswers = make(map[int64]pk.Pokemon)
 
-	bot.Debug = false
+	bot := setupBot()
+	updates := bot.ListenForWebhook("/" + bot.Token)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+		log.Printf("Defaulting to port %s", port)
+	}
 
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
-
-	updates, err := bot.GetUpdatesChan(u)
+	log.Printf("Listening on port %s", port)
+	go http.ListenAndServe(fmt.Sprintf(":%s", port), nil)
 
 	for update := range updates {
 
 		if update.Message == nil {
 			continue
+		}
+
+
+		if update.Message.Chat.IsGroup() || update.Message.Chat.IsSuperGroup() {
+			log.Printf("Request from chat: %s", update.Message.Chat.Title)
+		} else {
+			log.Printf("Request from user: %s", update.Message.Chat.UserName)
+		}
+		if bot.Debug {
+			log.Printf("Update: %v", update.Message.Text)
 		}
 
 		command := update.Message.Command()
@@ -56,4 +66,28 @@ func main() {
 			bot.Send(msg)
 		}
 	}
+}
+
+
+func setupBot() *tgbotapi.BotAPI {
+	bot, err := tgbotapi.NewBotAPI(os.Getenv("TELEGRAM_TOKEN"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	bot.Debug = false
+	log.Printf("Authorized on account %s", bot.Self.UserName)
+
+	_, err = bot.SetWebhook(tgbotapi.NewWebhook(os.Getenv("APP_URL") + "/" + bot.Token))
+	if err != nil {
+		log.Fatal(err)
+	}
+	info, err := bot.GetWebhookInfo()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if info.LastErrorDate != 0 {
+		log.Printf("Telegram callback failed: %s", info.LastErrorMessage)
+	}
+	return bot
 }

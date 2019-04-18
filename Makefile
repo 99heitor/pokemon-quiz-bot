@@ -5,7 +5,7 @@ all: deps build
 install:
 	go install bot.go
 build:
-	go build bot.go -o $(BINARY_NAME)
+	go build  -o $(BINARY_NAME) bot.go
 static-build:
 	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o ${BINARY_NAME} .
 test:
