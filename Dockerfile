@@ -15,4 +15,6 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certifi
 COPY --from=builder /build/bot .
 COPY --from=builder /build/pokemon.csv .
 
+EXPOSE 8080
+
 CMD ["./bot"]  
