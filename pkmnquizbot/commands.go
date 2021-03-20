@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"strings"
 
-	tgbotapi "gopkg.in/telegram-bot-api.v4"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 //AllPokemon will be initialized by the main function from the csv file
@@ -24,9 +24,9 @@ func WhosThatPokemon(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	shadow := shadowImage{randomPokemon.img}
 	shadowPNG := new(bytes.Buffer)
 	png.Encode(shadowPNG, shadow)
-	fileReader := tgbotapi.FileReader{Name: "Name", Reader: shadowPNG, Size: -1}
+	fileReader := tgbotapi.FileReader{Name: "Name", Reader: shadowPNG}
 
-	msg := tgbotapi.NewPhotoUpload(update.Message.Chat.ID, fileReader)
+	msg := tgbotapi.NewPhoto(update.Message.Chat.ID, fileReader)
 	msg.Caption = "Who's that Pokémon?"
 	bot.Send(msg)
 }
@@ -37,8 +37,8 @@ func Its(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		if strings.EqualFold(update.Message.CommandArguments(), answer.name) || update.Message.CommandArguments() == "..." {
 			originalPNG := new(bytes.Buffer)
 			png.Encode(originalPNG, answer.img)
-			fileReader := tgbotapi.FileReader{Name: "Name", Reader: originalPNG, Size: -1}
-			msg := tgbotapi.NewPhotoUpload(update.Message.Chat.ID, fileReader)
+			fileReader := tgbotapi.FileReader{Name: "Name", Reader: originalPNG}
+			msg := tgbotapi.NewPhoto(update.Message.Chat.ID, fileReader)
 			msg.Caption = "It's " + answer.name + "!"
 			msg.ReplyToMessageID = update.Message.MessageID
 			bot.Send(msg)
