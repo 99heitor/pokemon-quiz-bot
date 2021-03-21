@@ -14,6 +14,9 @@ import (
 	pk "github.com/99heitor/pokemon-quiz-bot/pkmnquizbot"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/ssm"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -56,7 +59,18 @@ func handleCommand(update tgbotapi.Update) {
 }
 
 func setupBot() {
-	bot, _ = tgbotapi.NewBotAPI(os.Getenv("PKMN_QUIZ_BOT_TELEGRAM_TOKEN"))
+	mySession := session.Must(session.NewSession())
+	svc := ssm.New(mySession)
+	param, err := svc.GetParameter(&ssm.GetParameterInput{
+		Name:           aws.String("/telegram/token/pokemon-quiz-bot"),
+		WithDecryption: aws.Bool(true),
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	bot, _ = tgbotapi.NewBotAPI(*param.Parameter.Value)
 }
 
 func handler(ctx context.Context, sqsEvent events.SQSEvent) error {
