@@ -4,9 +4,9 @@ phases:
   build:
     on-failure: ABORT
     commands:
-      - CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o pkmnquizbot .
+      - CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o lambdaHandler .
 
 artifacts:
   files:
-    - pkmnquizbot
+    - lambdaHandler
     - pokemon.csv

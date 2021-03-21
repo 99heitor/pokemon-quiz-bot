@@ -22,8 +22,15 @@ import (
 
 var bot *tgbotapi.BotAPI
 
-func handleCommand(update tgbotapi.Update) {
+func init() {
+	file, _ := os.Open("pokemon.csv")
+	pk.AllPokemon, _ = csv.NewReader(file).ReadAll()
+	pk.StoredAnswers = make(map[int64]pk.Pokemon)
+	bot, _ = tgbotapi.NewBotAPI(getToken())
+	rand.Seed(time.Now().UnixNano())
+}
 
+func handleUpdate(update tgbotapi.Update) {
 	if update.Message == nil {
 		return
 	}
@@ -58,40 +65,50 @@ func handleCommand(update tgbotapi.Update) {
 	}
 }
 
-func setupBot() {
-	mySession := session.Must(session.NewSession())
-	svc := ssm.New(mySession)
-	param, err := svc.GetParameter(&ssm.GetParameterInput{
-		Name:           aws.String("/telegram/token/pokemon-quiz-bot"),
-		WithDecryption: aws.Bool(true),
-	})
+func getToken() string {
+	token := os.Getenv("PKMN_TELEGRAM_TOKEN")
+	if token != "" {
+		return token
+	} else {
+		mySession := session.Must(session.NewSession())
+		svc := ssm.New(mySession)
+		param, err := svc.GetParameter(&ssm.GetParameterInput{
+			Name:           aws.String("/telegram/token/pokemon-quiz-bot"),
+			WithDecryption: aws.Bool(true),
+		})
 
-	if err != nil {
-		panic(err)
+		if err != nil {
+			panic(err)
+		}
+		return *param.Parameter.Value
 	}
-
-	bot, _ = tgbotapi.NewBotAPI(*param.Parameter.Value)
 }
 
-func handler(ctx context.Context, sqsEvent events.SQSEvent) error {
+func sqsHandler(ctx context.Context, sqsEvent events.SQSEvent) error {
 	for _, message := range sqsEvent.Records {
 		var update tgbotapi.Update
 		json.Unmarshal([]byte(message.Body), &update)
 		fmt.Printf("The message %s for event source %s = %s \n", message.MessageId, message.EventSource, message.Body)
-		handleCommand(update)
+		handleUpdate(update)
 	}
 
 	return nil
 }
 
-func init() {
-	file, _ := os.Open("pokemon.csv")
-	pk.AllPokemon, _ = csv.NewReader(file).ReadAll()
-	pk.StoredAnswers = make(map[int64]pk.Pokemon)
-	setupBot()
-	rand.Seed(time.Now().UnixNano())
+func lambdaHandler() {
+	lambda.Start(sqsHandler)
 }
 
+// used for running the bot locally, must define PKM_TELEGRAM_TOKEN
 func main() {
-	lambda.Start(handler)
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
+
+	bot.Request(&tgbotapi.DeleteWebhookConfig{
+		DropPendingUpdates: false,
+	})
+
+	for update := range bot.GetUpdatesChan(u) {
+		handleUpdate(update)
+	}
 }
