@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"math/rand"
@@ -23,6 +24,7 @@ import (
 var bot *tgbotapi.BotAPI
 
 func init() {
+	log.Printf("Initializing...")
 	file, _ := os.Open("pokemon.csv")
 	pk.AllPokemon, _ = csv.NewReader(file).ReadAll()
 	pk.StoredAnswers = make(map[int64]pk.Pokemon)
@@ -31,6 +33,7 @@ func init() {
 }
 
 func handleUpdate(update tgbotapi.Update) {
+	log.Printf("Handling telegram update %d.", update.UpdateID)
 	if update.Message == nil {
 		return
 	}
@@ -68,8 +71,10 @@ func handleUpdate(update tgbotapi.Update) {
 func getToken() string {
 	token := os.Getenv("PKMN_TELEGRAM_TOKEN")
 	if token != "" {
+		log.Printf("Getting token from environment variable.")
 		return token
 	} else {
+		log.Printf("Getting token from SSM.")
 		mySession := session.Must(session.NewSession())
 		svc := ssm.New(mySession)
 		param, err := svc.GetParameter(&ssm.GetParameterInput{
@@ -85,30 +90,35 @@ func getToken() string {
 }
 
 func sqsHandler(ctx context.Context, sqsEvent events.SQSEvent) error {
+	log.Printf("Handling SQS event with %d record", len(sqsEvent.Records))
 	for _, message := range sqsEvent.Records {
 		var update tgbotapi.Update
 		json.Unmarshal([]byte(message.Body), &update)
-		fmt.Printf("The message %s for event source %s = %s \n", message.MessageId, message.EventSource, message.Body)
+		log.Printf("The message %s for event source %s = %s \n", message.MessageId, message.EventSource, message.Body)
 		handleUpdate(update)
 	}
 
 	return nil
 }
 
-func lambdaHandler() {
-	lambda.Start(sqsHandler)
-}
-
-// used for running the bot locally, must define PKM_TELEGRAM_TOKEN
+// used for running the bot locally, run with flag --local
 func main() {
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 60
+	localPtr := flag.Bool("local", false, "Run the bot locally with long polling.")
+	flag.Parse()
+	if !*localPtr {
+		lambda.Start(sqsHandler)
+	} else {
+		log.Printf("Running bot locally, initializing long polling channel.")
 
-	bot.Request(&tgbotapi.DeleteWebhookConfig{
-		DropPendingUpdates: false,
-	})
+		u := tgbotapi.NewUpdate(0)
+		u.Timeout = 60
 
-	for update := range bot.GetUpdatesChan(u) {
-		handleUpdate(update)
+		bot.Request(&tgbotapi.DeleteWebhookConfig{
+			DropPendingUpdates: false,
+		})
+
+		for update := range bot.GetUpdatesChan(u) {
+			handleUpdate(update)
+		}
 	}
 }
