@@ -17,18 +17,23 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/ssm"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var bot *tgbotapi.BotAPI
+var mySession *session.Session
 
 func init() {
 	log.Printf("Initializing...")
+	mySession = session.Must(session.NewSession())
+	pk.DynamoClient = dynamodb.New(mySession)
+
 	file, _ := os.Open("pokemon.csv")
 	pk.AllPokemon, _ = csv.NewReader(file).ReadAll()
-	pk.StoredAnswers = make(map[int64]pk.Pokemon)
 	bot, _ = tgbotapi.NewBotAPI(getToken())
+
 	rand.Seed(time.Now().UnixNano())
 }
 
@@ -75,7 +80,7 @@ func getToken() string {
 		return token
 	} else {
 		log.Printf("Getting token from SSM.")
-		mySession := session.Must(session.NewSession())
+
 		svc := ssm.New(mySession)
 		param, err := svc.GetParameter(&ssm.GetParameterInput{
 			Name:           aws.String("/telegram/token/pokemon-quiz-bot"),
@@ -101,7 +106,7 @@ func sqsHandler(ctx context.Context, sqsEvent events.SQSEvent) error {
 	return nil
 }
 
-// used for running the bot locally, run with flag --local
+// To run the bot locally use flag --local
 func main() {
 	localPtr := flag.Bool("local", false, "Run the bot locally with long polling.")
 	flag.Parse()

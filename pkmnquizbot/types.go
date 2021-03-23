@@ -11,8 +11,6 @@ import (
 type Pokemon struct {
 	id   int
 	name string
-	img  image.Image
-	url  string
 }
 
 //PokemonList is just the pokemon CSV
@@ -21,10 +19,17 @@ type PokemonList [][]string
 const pokemonAssets = "https://assets.pokemon.com/assets/cms2/img/pokedex/full/%03d.png"
 
 func (p PokemonList) getPokemon(id int) Pokemon {
-	assetUrl := fmt.Sprintf(pokemonAssets, id)
-	resp, _ := http.Get(assetUrl)
+	return Pokemon{id, p[id][30]}
+}
+
+func (p Pokemon) getImage() image.Image {
+	resp, _ := http.Get(p.getAssetUrl())
 	decodedImage, _, _ := image.Decode(resp.Body)
-	return Pokemon{id, p[id][30], decodedImage, assetUrl}
+	return decodedImage
+}
+
+func (p Pokemon) getAssetUrl() string {
+	return fmt.Sprintf(pokemonAssets, p.id)
 }
 
 //shadowImage is the "shadow" version of an image: all non-alpha pixels are changed to black.

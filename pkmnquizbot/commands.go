@@ -14,38 +14,50 @@ import (
 //AllPokemon will be initialized by the main function from the csv file
 var AllPokemon PokemonList
 
-//StoredAnswers holds the current Pokemon for any given chat
-var StoredAnswers map[int64]Pokemon
-
 //WhosThatPokemon sends a message with a shadow of a Pokemon image
 func WhosThatPokemon(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	log.Printf("Rolling Pokémon for chat %d", update.Message.Chat.ID)
+	chatId := update.Message.Chat.ID
+	deleteShadowMessage(bot, getGameState(chatId))
+	log.Printf("Rolling Pokémon for chat %d", chatId)
 	r := rand.Intn(801)
 	randomPokemon := AllPokemon.getPokemon(r + 1)
-	StoredAnswers[update.Message.Chat.ID] = randomPokemon
-	log.Printf("Chose %s for chat %d", randomPokemon.name, update.Message.Chat.ID)
+	log.Printf("Chose %s for chat %d", randomPokemon.name, chatId)
 	log.Printf("Generating shadow image for %s", randomPokemon.name)
-	shadow := shadowImage{randomPokemon.img}
+	shadow := shadowImage{randomPokemon.getImage()}
 	shadowPNG := new(bytes.Buffer)
 	png.Encode(shadowPNG, shadow)
 	fileReader := tgbotapi.FileReader{Name: "Name", Reader: shadowPNG}
 	log.Printf("Shadow image for %s generated", randomPokemon.name)
-	log.Printf("Uploading shadow image for chat %d", update.Message.Chat.ID)
-	msg := tgbotapi.NewPhoto(update.Message.Chat.ID, fileReader)
+	log.Printf("Uploading shadow image for chat %d", chatId)
+	msg := tgbotapi.NewPhoto(chatId, fileReader)
 	msg.Caption = "Who's that Pokémon?"
-	bot.Send(msg)
-	log.Printf("Shadow image for %s sent to %d", randomPokemon.name, update.Message.Chat.ID)
+	response, _ := bot.Send(msg)
+	log.Printf("Shadow image for %s sent to %d", randomPokemon.name, chatId)
+	saveGameState(chatId, response.MessageID, randomPokemon.id)
 }
 
 //Its checks if the answer is the one stored for the current chat or is equal to "...", then reveals the answer.
 func Its(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	if answer, ok := StoredAnswers[update.Message.Chat.ID]; ok {
-		if strings.EqualFold(update.Message.CommandArguments(), answer.name) || update.Message.CommandArguments() == "..." {
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, fmt.Sprintf("[It's %s!](%s)", answer.name, answer.url))
+	chatId := update.Message.Chat.ID
+	chatConfig := getGameState(chatId)
+	if chatConfig.Id != 0 {
+		pokemon := AllPokemon.getPokemon(chatConfig.CurrentPokemon)
+		if strings.EqualFold(update.Message.CommandArguments(), pokemon.name) || update.Message.CommandArguments() == "..." {
+			msg := tgbotapi.NewMessage(chatId, fmt.Sprintf("[It's %s!](%s)", pokemon.name, pokemon.getAssetUrl()))
 			msg.ParseMode = "markdown"
 			msg.ReplyToMessageID = update.Message.MessageID
+			deleteShadowMessage(bot, chatConfig)
 			bot.Send(msg)
 		}
 	}
 
+}
+
+func deleteShadowMessage(bot *tgbotapi.BotAPI, chatConfig ChatConfig) {
+	if chatConfig.ShadowMessageId != 0 {
+		bot.Send(&tgbotapi.DeleteMessageConfig{
+			ChatID:    chatConfig.Id,
+			MessageID: chatConfig.ShadowMessageId,
+		})
+	}
 }
