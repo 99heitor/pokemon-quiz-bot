@@ -2,15 +2,12 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"strings"
-	"time"
 
 	pk "github.com/99heitor/pokemon-quiz-bot/pkmnquizbot"
 	"github.com/aws/aws-lambda-go/events"
@@ -24,17 +21,22 @@ import (
 
 var bot *tgbotapi.BotAPI
 var mySession *session.Session
+var localPtr *bool
+var shadowGenerationPtr *bool
 
 func init() {
+	localPtr = flag.Bool("local", false, "Run the bot locally with long polling.")
+	shadowGenerationPtr = flag.Bool("generate", false, "Generate shadow images, saves them to ./shadow")
+	flag.Parse()
+	if *shadowGenerationPtr {
+		log.Printf("Generating shadow images...")
+		pk.GenerateShadow()
+		return
+	}
 	log.Printf("Initializing...")
 	mySession = session.Must(session.NewSession())
 	pk.DynamoClient = dynamodb.New(mySession)
-
-	file, _ := os.Open("pokemon.csv")
-	pk.AllPokemon, _ = csv.NewReader(file).ReadAll()
 	bot, _ = tgbotapi.NewBotAPI(getToken())
-
-	rand.Seed(time.Now().UnixNano())
 }
 
 func handleUpdate(update tgbotapi.Update) {
@@ -99,7 +101,6 @@ func sqsHandler(ctx context.Context, sqsEvent events.SQSEvent) error {
 	for _, message := range sqsEvent.Records {
 		var update tgbotapi.Update
 		json.Unmarshal([]byte(message.Body), &update)
-		log.Printf("The message %s for event source %s = %s \n", message.MessageId, message.EventSource, message.Body)
 		handleUpdate(update)
 	}
 
@@ -108,9 +109,10 @@ func sqsHandler(ctx context.Context, sqsEvent events.SQSEvent) error {
 
 // To run the bot locally use flag --local
 func main() {
-	localPtr := flag.Bool("local", false, "Run the bot locally with long polling.")
-	flag.Parse()
-	if !*localPtr {
+
+	if *shadowGenerationPtr {
+		return
+	} else if !*localPtr {
 		lambda.Start(sqsHandler)
 	} else {
 		log.Printf("Running bot locally, initializing long polling channel.")

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/color"
+	"math/rand"
 	"net/http"
 )
 
@@ -14,22 +15,32 @@ type Pokemon struct {
 }
 
 //PokemonList is just the pokemon CSV
-type PokemonList [][]string
+type PokemonList []Pokemon
 
 const pokemonAssets = "https://assets.pokemon.com/assets/cms2/img/pokedex/full/%03d.png"
+const shadowAssets = "https://static.heitor.dev/pkmn/shadow/%d.png"
+const PokemonAmount = 898
 
-func (p PokemonList) getPokemon(id int) Pokemon {
-	return Pokemon{id, p[id][30]}
+func (p PokemonList) get(id int) Pokemon {
+	return p[id-1]
+}
+
+func (p PokemonList) getRandom() Pokemon {
+	return p.get(rand.Intn(PokemonAmount) + 1)
 }
 
 func (p Pokemon) getImage() image.Image {
-	resp, _ := http.Get(p.getAssetUrl())
+	resp, _ := http.Get(p.getPokemonUrl())
 	decodedImage, _, _ := image.Decode(resp.Body)
 	return decodedImage
 }
 
-func (p Pokemon) getAssetUrl() string {
+func (p Pokemon) getPokemonUrl() string {
 	return fmt.Sprintf(pokemonAssets, p.id)
+}
+
+func (p Pokemon) getShadowUrl() string {
+	return fmt.Sprintf(shadowAssets, p.id)
 }
 
 //shadowImage is the "shadow" version of an image: all non-alpha pixels are changed to black.
